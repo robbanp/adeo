@@ -27,6 +27,7 @@ contract Payment {
     IERC20 public token;
     address public tokenContractAddress; // only allow tokens from this address
     address public admin; // only allow modifications from this address
+    address public owner;
     uint256 public totalAuthBalance;
     uint256 public totalCaptureBalance;
     
@@ -36,11 +37,13 @@ contract Payment {
 
     mapping(address => mapping(address => Transaction)) public balances;
 
-    constructor(string memory _greeting) {
+    constructor(address _address, address _owner) {
+        console.log("Deploying a Payment contract with token address:", _address);
+        tokenContractAddress = _address;
+        owner = _owner;
         token = IERC20(tokenContractAddress);
         admin = msg.sender;
         totalAuthBalance = 0;
-        console.log("Deploying a Greeter with greeting:", _greeting);
 //        greeting = _greeting;
     }
 
@@ -48,16 +51,17 @@ contract Payment {
         return block.timestamp;
     }
     
-    function authorize(string memory _merchantId, string memory _transactionId, uint256 _amount, address _receiver) public returns (Transaction memory response) {
+    function authorize(string memory _merchantId, string memory _transactionId, uint _amount, address _receiver) public returns (string memory) {
         // check that sender is of correct token type
         
         string memory id = newId(_transactionId);        
         Transaction memory trx = Transaction(_amount, id, _merchantId, msg.sender, _receiver, time(), 0, "authorized");
         auths[id] = trx;
         // transfer amount from sender to this escrow auth account
-        token.transferFrom(msg.sender, address(this), _amount);
+        console.log("transfer from: %s %s %s", msg.sender, owner, _amount);
+        token.transferFrom(msg.sender, owner, _amount);
         totalAuthBalance += _amount;
-        return trx;
+        return trx.id;
         // lock tokens for xx time
     }
 
