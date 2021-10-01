@@ -1,59 +1,60 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "hardhat/console.sol";
 
 
 // This is the main building block for smart contracts.
-contract Token {
+contract Token is ERC20 {
     // Some string type variables to identify the token.
     // The `public` modifier makes a variable readable from outside the contract.
-    string public name = "Adeo";
-    string public symbol = "ADEO";
-
-    // The fixed amount of tokens stored in an unsigned integer type variable.
-    uint256 public totalSupply = 1000000;
 
     // An address type variable is used to store ethereum accounts.
     address public owner;
-
-    // A mapping is a key/value map. Here we store each account balance.
-    mapping(address => uint256) balances;
+    mapping(address => mapping (address => uint256)) _allowances;
 
     /**
      * Contract initialization.
      *
      * The `constructor` is executed only once when the contract is created.
      */
-    constructor() {
-        // The totalSupply is assigned to transaction sender, which is the account
-        // that is deploying the contract.
-        balances[msg.sender] = totalSupply;
+
+     constructor() ERC20("Adeo", "ADEO") {
+        _mint(msg.sender, 1000000);
         owner = msg.sender;
     }
 
-    /**
-     * A function to transfer tokens.
-     *
-     * The `external` modifier makes a function *only* callable from outside
-     * the contract.
-     */
-    function transfer(address to, uint256 amount) external {
-        // Check if the transaction sender has enough tokens.
-        // If `require`'s first argument evaluates to `false` then the
-        // transaction will revert.
-        require(balances[msg.sender] >= amount, "Not enough tokens");
-
-        // Transfer the amount.
-        balances[msg.sender] -= amount;
-        balances[to] += amount;
+    // sender is the contract
+    function approve(address delegate, uint256 numTokens) public override returns (bool) {
+        _allowances[msg.sender][delegate] = numTokens;
+        emit Approval(msg.sender, delegate, numTokens);
+        console.log("Amount %s is reserved", numTokens);
+        console.log("on contract ", delegate);
+        console.log("for account holder ", msg.sender);
+        return true;
     }
 
-    /**
-     * Read only function to retrieve the token balance of a given account.
-     *
-     * The `view` modifier indicates that it doesn't modify the contract's
-     * state, which allows us to call it without executing a transaction.
-     */
-    function balanceOf(address account) external view returns (uint256) {
-        return balances[account];
+    function allowance(address _owner, address spender) public view virtual override returns (uint256) {
+        console.log("Checking allowance");        
+        console.log("Owner ", _owner);
+        console.log("Contract ", spender);
+
+        return _allowances[_owner][spender];
+    }
+
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) public virtual override returns (bool) {
+        _transfer(sender, recipient, amount);
+
+        uint256 currentAllowance = _allowances[sender][_msgSender()];
+        require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
+        unchecked {
+            _approve(sender, _msgSender(), currentAllowance - amount);
+        }
+
+        return true;
     }
 }
